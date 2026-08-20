@@ -71,11 +71,15 @@ input{font-family:inherit;}
 .room-code-display{font-family:var(--font-mono); font-size:28px; font-weight:700; letter-spacing:6px; text-align:center; background:var(--ink); color:var(--yellow); padding:14px; margin-bottom:10px; border:3px solid var(--ink);}
 
 #game-screen{
-  display:grid; grid-template-columns:1fr 260px; grid-template-rows:auto 1fr auto;
-  grid-template-areas:"opponents log" "table log" "hand hand";
+  display:grid; grid-template-columns: 1fr 260px; grid-template-rows: auto 1fr auto auto;
+  grid-template-areas:
+    "opponents log"
+    "table      log"
+    "status     status"
+    "hand       hand";
   gap:14px; padding:16px; min-height:calc(100vh - 70px);
 }
-@media (max-width:880px){#game-screen{grid-template-columns:1fr; grid-template-areas:"opponents" "table" "log" "hand";}}
+@media (max-width:880px){#game-screen{grid-template-columns:1fr; grid-template-rows:auto auto auto auto auto; grid-template-areas:"opponents" "table" "log" "status" "hand";}}
 
 /* =====================================================================
    MOBILE LAYOUT — most players will be on a phone. Priorities:
@@ -106,7 +110,7 @@ input{font-family:inherit;}
   .log-panel.collapsed h3 .chevron{transform:rotate(-90deg);}
   .log-list{max-height:160px;}
 
-  .status-bar{position:sticky; bottom:118px; z-index:15; background:var(--ink); padding:8px 4px; margin:0 -10px; width:calc(100% + 20px);}
+  .status-bar{background:var(--ink); padding:8px 4px; margin:0 -10px 4px; width:calc(100% + 20px);}
 
   .hand-area{
     position:sticky; bottom:0; left:0; right:0;
@@ -114,9 +118,14 @@ input{font-family:inherit;}
     padding:8px 0 10px; margin:0 -10px; width:calc(100% + 20px);
     z-index:10;
   }
-  .hand-strip{padding:26px 0 4px;}
-  .hand-strip .card{margin-left:-22px;}
-  .hand-strip .card:hover{transform: translateZ(40px) translateY(-18px) rotateX(0deg) rotateZ(0deg) scale(1.08);}
+  .hand-strip{padding:26px 0 4px; perspective:none;}
+  .hand-strip .card{
+    margin-left:-22px;
+    transform: none !important;
+    transition: margin-top .12s ease, box-shadow .12s ease;
+  }
+  .hand-strip .card:active{margin-top:-14px !important; z-index:20; box-shadow:4px 8px 0 rgba(0,0,0,.45);}
+  .hand-strip .card:hover{transform:none;}
 }
 .opponents-row{grid-area:opponents; display:flex; gap:12px; flex-wrap:wrap;}
 .opp-chip{background:var(--stage-2); border:3px solid var(--ink); padding:10px 14px; min-width:140px; position:relative;}
@@ -155,7 +164,7 @@ input{font-family:inherit;}
 .log-list li{padding:6px 10px; font-size:11px; line-height:1.4; border-bottom:1px dashed rgba(0,0,0,.15);}
 .log-list li:last-child{background:var(--yellow); font-weight:700;}
 
-.status-bar{grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.status-bar{grid-area:status; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
 .status-text{font-family:var(--font-mono); font-size:12px; font-weight:700; background:var(--yellow); color:var(--ink); padding:8px 12px; border:2px solid var(--ink);}
 .controls{display:flex; gap:10px;}
 
