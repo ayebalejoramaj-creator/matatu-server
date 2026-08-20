@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Matatu — server test client</title>
+<style>
+  body{font-family:monospace; background:#14131A; color:#EDE6D6; padding:20px;}
+  button{padding:8px 12px; margin:4px 0; cursor:pointer;}
+  input{padding:6px; margin:4px 0;}
+  #log{white-space:pre-wrap; background:#223C57; padding:10px; margin-top:10px; max-height:300px; overflow:auto;}
+  .card{display:inline-block; border:1px solid #EDE6D6; padding:4px 8px; margin:2px; cursor:pointer;}
+</style>
+</head>
+<body>
+<h2>Matatu — plumbing test (not the real UI yet)</h2>
+<div>
+  Name: <input id="name" value="Player1">
+  <button onclick="joinLobby()">See public rooms</button>
+</div>
+<div>
+  <button onclick="createRoom(true)">Create public room</button>
+  <button onclick="createRoom(false)">Create private room</button>
+  Room code: <input id="joinCode" placeholder="ABCDE">
+  <button onclick="joinRoom()">Join by code</button>
+</div>
+<div>
+  <button onclick="startGame()">Start game (host only)</button>
+</div>
+<div id="hand"></div>
+<div>
+  <button onclick="draw()">Draw</button>
+  <button onclick="pass()">Pass</button>
+</div>
+<div id="log"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let mySeatIdx = null;
+let myCode = null;
+
+function log(msg){
+  const el = document.getElementById('log');
+  el.textContent = (typeof msg === 'string' ? msg : JSON.stringify(msg, null, 2)) + '\n' + el.textContent;
+}
+
+function joinLobby(){ socket.emit('lobby:join'); }
+socket.on('lobby:update', rooms => log({ publicRooms: rooms }));
+
+function createRoom(isPublic){
+  socket.emit('room:create', {
+    name: document.getElementById('name').value + "'s table",
+    isPublic,
+    hostName: document.getElementById('name').value,
+    config: { numPlayers: 3, startingHandSize: 5, useJokers: true, allowStacking: true }
+  }, (res) => {
+    log(res);
+    if(res.ok){ myCode = res.code; mySeatIdx = res.seatIndex; document.getElementById('joinCode').value = res.code; }
+  });
+}
+
+function joinRoom(){
+  socket.emit('room:join', {
+    code: document.getElementById('joinCode').value,
+    name: document.getElementById('name').value
+  }, (res) => {
+    log(res);
+    if(res.ok){ myCode = res.code; mySeatIdx = res.seatIndex; }
+  });
+}
+
+socket.on('room:update', r => log({ roomUpdate: r }));
+socket.on('room:error', e => log({ roomError: e }));
+
+function startGame(){ socket.emit('room:start'); }
+
+socket.on('game:state', view => {
+  log({ gameState: view });
+  const me = view.players[view.you];
+  const handEl = document.getElementById('hand');
+  handEl.innerHTML = '';
+  (me.hand || []).forEach(card => {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.textContent = card.rank === 'JOKER' ? 'JOKER' : card.rank + card.suit;
+    d.onclick = () => socket.emit('game:play', { cardId: card.id });
+    handEl.appendChild(d);
+  });
+});
+
+socket.on('game:over', info => log({ gameOver: info }));
+
+function draw(){ socket.emit('game:draw'); }
+function pass(){ socket.emit('game:pass'); }
+</script>
+</body>
+</html>
