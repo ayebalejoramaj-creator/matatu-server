@@ -76,6 +76,48 @@ input{font-family:inherit;}
   gap:14px; padding:16px; min-height:calc(100vh - 70px);
 }
 @media (max-width:880px){#game-screen{grid-template-columns:1fr; grid-template-areas:"opponents" "table" "log" "hand";}}
+
+/* =====================================================================
+   MOBILE LAYOUT — most players will be on a phone. Priorities:
+   1. Your hand is always reachable without hunting for it (sticky bar)
+   2. The log doesn't eat the screen — collapses to a thin strip you can
+      tap open when you actually want to read it
+   3. Cards shrink so a 5-7 card hand doesn't wrap awkwardly
+   ===================================================================== */
+@media (max-width:600px){
+  .banner{padding:10px 14px;}
+  #game-screen{padding:10px; gap:10px; padding-bottom:180px;} /* room for sticky hand bar */
+  .opp-chip{min-width:110px; padding:8px 10px;}
+  .opp-chip .name{font-size:12px;}
+  .opp-chip .cardcount{font-size:15px; margin-top:6px;}
+  .table-area{min-height:200px; padding:16px 10px; gap:18px;}
+  .card{width:64px; height:90px; padding:6px;}
+  .card .rank-top, .card .rank-bot{font-size:12px;}
+  .card .suit-mid{font-size:22px;}
+  .card.joker .suit-mid{font-size:10px;}
+  .deck-back{width:64px; height:90px;}
+  .deck-back .count{font-size:15px;}
+  .badge{font-size:9px; padding:2px 6px; top:-11px;}
+
+  .log-panel{max-height:none;}
+  .log-panel.collapsed .log-list{display:none;}
+  .log-panel h3{display:flex; justify-content:space-between; align-items:center; cursor:pointer;}
+  .log-panel h3 .chevron{font-size:11px; transition:transform .15s ease;}
+  .log-panel.collapsed h3 .chevron{transform:rotate(-90deg);}
+  .log-list{max-height:160px;}
+
+  .status-bar{position:sticky; bottom:118px; z-index:15; background:var(--ink); padding:8px 4px; margin:0 -10px; width:calc(100% + 20px);}
+
+  .hand-area{
+    position:sticky; bottom:0; left:0; right:0;
+    background:var(--ink); border-top:3px solid var(--paper);
+    padding:8px 0 10px; margin:0 -10px; width:calc(100% + 20px);
+    z-index:10;
+  }
+  .hand-strip{padding:26px 0 4px;}
+  .hand-strip .card{margin-left:-22px;}
+  .hand-strip .card:hover{transform: translateZ(40px) translateY(-18px) rotateX(0deg) rotateZ(0deg) scale(1.08);}
+}
 .opponents-row{grid-area:opponents; display:flex; gap:12px; flex-wrap:wrap;}
 .opp-chip{background:var(--stage-2); border:3px solid var(--ink); padding:10px 14px; min-width:140px; position:relative;}
 .opp-chip.active{border-color:var(--yellow); box-shadow:0 0 0 3px var(--yellow) inset;}
@@ -217,8 +259,8 @@ input{font-family:inherit;}
     </div>
   </div>
 
-  <div class="log-panel">
-    <h3>Table talk</h3>
+  <div class="log-panel" id="logPanel">
+    <h3 id="logToggle">Table talk <span class="chevron">▾</span></h3>
     <ul class="log-list" id="logList"></ul>
   </div>
 
@@ -492,6 +534,12 @@ function renderState(view){
     hide('suitModal');
   }
 }
+
+// On mobile, the log starts collapsed (out of the way) — tap the header to expand it.
+if (window.matchMedia('(max-width: 600px)').matches) {
+  $('logPanel').classList.add('collapsed');
+}
+$('logToggle').onclick = () => $('logPanel').classList.toggle('collapsed');
 
 document.querySelectorAll('.suit-btn').forEach(btn => {
   btn.onclick = () => {
