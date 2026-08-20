@@ -1,97 +1,504 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Matatu — server test client</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>MATATU RUSH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-  body{font-family:monospace; background:#14131A; color:#EDE6D6; padding:20px;}
-  button{padding:8px 12px; margin:4px 0; cursor:pointer;}
-  input{padding:6px; margin:4px 0;}
-  #log{white-space:pre-wrap; background:#223C57; padding:10px; margin-top:10px; max-height:300px; overflow:auto;}
-  .card{display:inline-block; border:1px solid #EDE6D6; padding:4px 8px; margin:2px; cursor:pointer;}
+:root{
+  --ink:        #14131A;
+  --paper:      #EDE6D6;
+  --stage:      #2B4C6F;
+  --stage-2:    #223C57;
+  --red:        #E5433B;
+  --yellow:     #F2B705;
+  --blue:       #1D4E89;
+  --green:      #2E8B57;
+  --line:       6px;
+  --radius:     2px;
+  --font-display: 'Archivo Black', sans-serif;
+  --font-body:    'Space Grotesk', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{font-family:var(--font-body); background:var(--ink); color:var(--paper); overflow-x:hidden; min-height:100vh;}
+button{font-family:inherit; cursor:pointer;}
+input{font-family:inherit;}
+.hidden{display:none !important;}
+
+.banner{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 22px;
+  background: linear-gradient(90deg, var(--red) 0 33.33%, var(--yellow) 33.33% 66.66%, var(--blue) 66.66% 100%);
+  border-bottom: var(--line) solid var(--ink);
+}
+.banner h1{font-family:var(--font-display); font-size:clamp(20px,4vw,30px); color:var(--ink); letter-spacing:1px; text-shadow:2px 2px 0 rgba(255,255,255,.35);}
+.banner .sub{font-family:var(--font-mono); font-size:11px; color:var(--ink); font-weight:700; background:var(--paper); padding:4px 8px; border:2px solid var(--ink);}
+
+#setup-screen{max-width:640px; margin:24px auto; padding:0 16px 60px;}
+.setup-card{background:var(--paper); color:var(--ink); border:var(--line) solid var(--ink); padding:24px; position:relative; margin-bottom:20px;}
+.setup-card::before{content:""; position:absolute; top:-14px; left:24px; width:36px; height:36px; background:var(--yellow); border:4px solid var(--ink); transform:rotate(45deg);}
+.setup-card h2{font-family:var(--font-display); font-size:20px; margin-bottom:6px;}
+.setup-card p.lead{font-size:13px; opacity:.8; margin-bottom:18px; line-height:1.5;}
+.field{margin-bottom:16px;}
+.field label{display:block; font-family:var(--font-mono); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+.field input[type=text], .field select{width:100%; padding:10px; border:3px solid var(--ink); background:#fff; font-family:var(--font-body); font-size:15px; font-weight:600;}
+.btn{font-family:var(--font-display); font-size:14px; letter-spacing:.03em; padding:13px 18px; border:3px solid var(--ink); background:var(--ink); color:var(--paper); transition:transform .08s ease;}
+.btn:hover{transform:translate(-2px,-2px); box-shadow:4px 4px 0 var(--ink);}
+.btn:active{transform:translate(0,0); box-shadow:none;}
+.btn.primary{background:var(--red); color:var(--paper); border-color:var(--ink); width:100%; margin-top:4px;}
+.btn.secondary{background:var(--paper); color:var(--ink);}
+.btn.small{padding:8px 14px; font-size:12px;}
+.btn:disabled{opacity:.35; cursor:not-allowed; transform:none; box-shadow:none;}
+.row{display:flex; gap:10px; flex-wrap:wrap;}
+.row > *{flex:1;}
+.join-row{display:flex; gap:8px;}
+.join-row input{flex:1; padding:10px; border:3px solid var(--ink); text-transform:uppercase; font-family:var(--font-mono); font-weight:700; letter-spacing:2px;}
+.join-row .btn{flex:none;}
+
+.lobby-list{list-style:none; margin-top:10px;}
+.lobby-list li{display:flex; justify-content:space-between; align-items:center; padding:10px; border:2px solid var(--ink); margin-bottom:8px; background:#fff;}
+.lobby-list .meta{font-family:var(--font-mono); font-size:12px; opacity:.7;}
+.lobby-empty{font-family:var(--font-mono); font-size:12px; opacity:.6; padding:10px 0;}
+
+.seat-list{list-style:none; margin:14px 0;}
+.seat-list li{display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:2px solid var(--ink); margin-bottom:8px; background:#fff; font-family:var(--font-mono); font-weight:700; font-size:13px;}
+.seat-list li.empty{opacity:.4; font-weight:400;}
+.seat-list .host-tag{background:var(--yellow); border:2px solid var(--ink); padding:2px 6px; font-size:10px;}
+.room-code-display{font-family:var(--font-mono); font-size:28px; font-weight:700; letter-spacing:6px; text-align:center; background:var(--ink); color:var(--yellow); padding:14px; margin-bottom:10px; border:3px solid var(--ink);}
+
+#game-screen{
+  display:grid; grid-template-columns:1fr 260px; grid-template-rows:auto 1fr auto;
+  grid-template-areas:"opponents log" "table log" "hand hand";
+  gap:14px; padding:16px; min-height:calc(100vh - 70px);
+}
+@media (max-width:880px){#game-screen{grid-template-columns:1fr; grid-template-areas:"opponents" "table" "log" "hand";}}
+.opponents-row{grid-area:opponents; display:flex; gap:12px; flex-wrap:wrap;}
+.opp-chip{background:var(--stage-2); border:3px solid var(--ink); padding:10px 14px; min-width:140px; position:relative;}
+.opp-chip.active{border-color:var(--yellow); box-shadow:0 0 0 3px var(--yellow) inset;}
+.opp-chip .name{font-family:var(--font-mono); font-weight:700; font-size:13px; display:flex; justify-content:space-between; align-items:center;}
+.opp-chip .cardcount{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:18px; font-family:var(--font-display);}
+.opp-chip .backmini{width:16px; height:24px; background:repeating-linear-gradient(45deg, var(--blue) 0 4px, var(--yellow) 4px 8px); border:2px solid var(--ink);}
+.opp-chip .status{font-size:10px; font-family:var(--font-mono); color:var(--yellow); height:14px; margin-top:4px;}
+
+.table-area{grid-area:table; background:radial-gradient(circle at 30% 20%, var(--stage) 0%, var(--stage-2) 70%); border:var(--line) solid var(--ink); display:flex; align-items:center; justify-content:center; gap:30px; position:relative; padding:24px 16px; min-height:260px; perspective:900px;}
+.table-area .card, .table-area .deck-back{transform:rotateX(8deg); transition:transform .2s ease;}
+.pile-wrap{display:flex; flex-direction:column; align-items:center; gap:8px;}
+.pile-label{font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--paper); opacity:.75;}
+
+.card{width:84px; height:118px; border-radius:var(--radius); border:3px solid var(--ink); background:var(--paper); display:flex; flex-direction:column; justify-content:space-between; padding:8px; color:var(--ink); position:relative; font-family:var(--font-mono); font-weight:700; box-shadow:3px 3px 0 rgba(0,0,0,.35); user-select:none;}
+.card.red{color:var(--red);} .card.black{color:var(--ink);}
+.card .rank-top{font-size:16px; line-height:1;}
+.card .suit-mid{font-size:30px; align-self:center;}
+.card .rank-bot{font-size:16px; align-self:flex-end; transform:rotate(180deg); line-height:1;}
+.card.joker{background:repeating-linear-gradient(135deg, var(--yellow) 0 8px, var(--paper) 8px 16px);}
+.card.joker .suit-mid{font-family:var(--font-display); font-size:13px; text-align:center;}
+
+.deck-back{width:84px; height:118px; border-radius:var(--radius); border:3px solid var(--ink); background:repeating-linear-gradient(45deg, var(--blue) 0 10px, var(--red) 10px 20px); box-shadow:3px 3px 0 rgba(0,0,0,.35), 6px 6px 0 rgba(0,0,0,.2); position:relative;}
+.deck-back .count{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:20px; color:var(--paper); background:rgba(20,19,26,.55);}
+.deck-back.drawable{cursor:pointer; transition:transform .1s;}
+.deck-back.drawable:hover{transform:translateY(-4px);}
+.deck-back.disabled{filter:grayscale(.6) brightness(.6); cursor:not-allowed;}
+
+.badge{font-family:var(--font-mono); font-weight:700; font-size:11px; background:var(--yellow); color:var(--ink); border:2px solid var(--ink); padding:3px 8px; position:absolute; top:-14px; right:-6px; white-space:nowrap;}
+.badge.pick{background:var(--red); color:var(--paper);}
+.badge.suit{background:var(--blue); color:var(--paper);}
+
+.log-panel{grid-area:log; background:var(--paper); color:var(--ink); border:var(--line) solid var(--ink); display:flex; flex-direction:column; overflow:hidden; height:fit-content; max-height:400px;}
+.log-panel h3{font-family:var(--font-display); font-size:13px; padding:10px 12px; background:var(--ink); color:var(--paper);}
+.log-list{list-style:none; overflow-y:auto; max-height:340px;}
+.log-list li{padding:6px 10px; font-size:11px; line-height:1.4; border-bottom:1px dashed rgba(0,0,0,.15);}
+.log-list li:last-child{background:var(--yellow); font-weight:700;}
+
+.status-bar{grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.status-text{font-family:var(--font-mono); font-size:12px; font-weight:700; background:var(--yellow); color:var(--ink); padding:8px 12px; border:2px solid var(--ink);}
+.controls{display:flex; gap:10px;}
+
+.hand-area{grid-area:hand; display:flex; flex-direction:column; gap:10px; align-items:center;}
+.hand-strip{
+  display:flex; justify-content:center; align-items:flex-end; gap:0;
+  padding:36px 0 10px; flex-wrap:wrap;
+  perspective:1100px; perspective-origin:50% 120%;
+}
+.hand-strip .card{
+  margin-left:-30px; cursor:pointer;
+  transform-style:preserve-3d;
+  transform: translateZ(0) translateY(0) rotateX(14deg) rotateZ(var(--fan-rot, 0deg));
+  transition: transform .16s cubic-bezier(.2,.8,.3,1.2), box-shadow .16s ease;
+  box-shadow:3px 3px 0 rgba(0,0,0,.35), 0 6px 10px rgba(0,0,0,.25);
+}
+.hand-strip .card:first-child{margin-left:0;}
+.hand-strip .card:hover{
+  transform: translateZ(60px) translateY(-26px) rotateX(0deg) rotateZ(0deg) scale(1.06);
+  z-index:20;
+  box-shadow: 4px 10px 0 rgba(0,0,0,.4), 0 24px 30px rgba(0,0,0,.5);
+}
+.hand-strip .card.invalid{filter:grayscale(.7) brightness(.75); cursor:not-allowed;}
+.hand-strip .card.invalid:hover{transform: translateZ(0) rotateX(14deg) rotateZ(var(--fan-rot, 0deg)); box-shadow:3px 3px 0 rgba(0,0,0,.35), 0 6px 10px rgba(0,0,0,.25);}
+.hand-strip .card.playable-glow{box-shadow:0 0 0 3px var(--green), 3px 3px 0 rgba(0,0,0,.35), 0 6px 10px rgba(0,0,0,.25);}
+.hand-strip .card.playable-glow:hover{box-shadow:0 0 0 3px var(--green), 4px 10px 0 rgba(0,0,0,.4), 0 24px 30px rgba(0,0,0,.5);}
+
+.modal-overlay{position:fixed; inset:0; background:rgba(20,19,26,.75); display:flex; align-items:center; justify-content:center; z-index:50;}
+.modal-box{background:var(--paper); color:var(--ink); border:var(--line) solid var(--ink); padding:24px; max-width:400px; width:90%; text-align:center;}
+.modal-box h2{font-family:var(--font-display); font-size:18px; margin-bottom:14px;}
+.suit-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;}
+.suit-btn{border:3px solid var(--ink); padding:16px; font-size:30px; background:#fff;}
+.suit-btn.red{color:var(--red);} .suit-btn.black{color:var(--ink);}
+.suit-btn:hover{background:var(--yellow);}
+.win-box .trophy{font-size:44px; margin-bottom:6px;}
+.win-box h2{font-family:var(--font-display); font-size:22px; margin-bottom:6px;}
+.win-box p{font-size:13px; margin-bottom:18px; opacity:.85;}
+.toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--red); color:var(--paper); padding:10px 16px; border:2px solid var(--ink); font-family:var(--font-mono); font-size:12px; font-weight:700; z-index:60;}
 </style>
 </head>
 <body>
-<h2>Matatu — plumbing test (not the real UI yet)</h2>
-<div>
-  Name: <input id="name" value="Player1">
-  <button onclick="joinLobby()">See public rooms</button>
+
+<div class="banner">
+  <h1>MATATU RUSH</h1>
+  <span class="sub" id="connStatus">CONNECTING…</span>
 </div>
-<div>
-  <button onclick="createRoom(true)">Create public room</button>
-  <button onclick="createRoom(false)">Create private room</button>
-  Room code: <input id="joinCode" placeholder="ABCDE">
-  <button onclick="joinRoom()">Join by code</button>
+
+<div id="setup-screen">
+  <div class="setup-card">
+    <h2>Play Matatu</h2>
+    <p class="lead">Match suit or rank to empty your hand first. Twos/threes force a pick-up, Jacks skip, Aces change the suit, Eights ask a question, Jokers hit hardest.</p>
+    <div class="field">
+      <label for="nameInput">Your name</label>
+      <input type="text" id="nameInput" maxlength="16" placeholder="Enter your name">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="createPublicBtn">Create public room</button>
+      <button class="btn secondary" id="createPrivateBtn">Create private room</button>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label>Join with a code</label>
+      <div class="join-row">
+        <input type="text" id="joinCodeInput" maxlength="5" placeholder="ABCDE">
+        <button class="btn secondary" id="joinBtn">Join</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-card">
+    <h2>Public tables</h2>
+    <p class="lead">Open rooms anyone can join right now.</p>
+    <ul class="lobby-list" id="lobbyList"></ul>
+    <p class="lobby-empty hidden" id="lobbyEmpty">No public tables open right now — start one!</p>
+  </div>
 </div>
-<div>
-  <button onclick="startGame()">Start game (host only)</button>
+
+<div id="waiting-screen" class="hidden">
+  <div style="max-width:640px; margin:24px auto; padding:0 16px 60px;">
+    <div class="setup-card">
+      <h2 id="waitingTitle">Waiting for players…</h2>
+      <div class="room-code-display" id="roomCodeDisplay">-----</div>
+      <p class="lead">Share this code with friends, or leave the room public and they'll find it in the lobby.</p>
+      <ul class="seat-list" id="seatList"></ul>
+      <button class="btn primary" id="startGameBtn">Start game</button>
+      <button class="btn secondary" id="leaveRoomBtn" style="width:100%; margin-top:10px;">Leave room</button>
+    </div>
+  </div>
 </div>
-<div id="hand"></div>
-<div>
-  <button onclick="draw()">Draw</button>
-  <button onclick="pass()">Pass</button>
+
+<div id="game-screen" class="hidden">
+  <div class="opponents-row" id="opponentsRow"></div>
+
+  <div class="table-area">
+    <div class="pile-wrap">
+      <span class="pile-label">Market</span>
+      <div id="drawPile" class="deck-back"><div class="count" id="drawCount">0</div></div>
+    </div>
+    <div class="pile-wrap">
+      <span class="pile-label">Discard</span>
+      <div id="discardPile" style="position:relative;"></div>
+    </div>
+  </div>
+
+  <div class="log-panel">
+    <h3>Table talk</h3>
+    <ul class="log-list" id="logList"></ul>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-text" id="statusText">—</div>
+    <div class="controls">
+      <button class="btn secondary small" id="passBtn" disabled>Pass turn</button>
+      <button class="btn secondary small" id="leaveGameBtn">Leave</button>
+    </div>
+  </div>
+
+  <div class="hand-area">
+    <div class="hand-strip" id="handStrip"></div>
+  </div>
 </div>
-<div id="log"></div>
+
+<div class="modal-overlay hidden" id="suitModal">
+  <div class="modal-box">
+    <h2>Name your suit</h2>
+    <p>You played an Ace — pick the suit the next player must follow.</p>
+    <div class="suit-grid">
+      <button class="suit-btn black" data-suit="S">&#9824;</button>
+      <button class="suit-btn red"   data-suit="H">&#9829;</button>
+      <button class="suit-btn red"   data-suit="D">&#9830;</button>
+      <button class="suit-btn black" data-suit="C">&#9827;</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="winModal">
+  <div class="modal-box win-box">
+    <div class="trophy">&#9733;</div>
+    <h2 id="winTitle">Game over</h2>
+    <p id="winSub"></p>
+    <button class="btn primary" id="backToLobbyBtn">Back to lobby</button>
+  </div>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+const SUIT_SYMBOL = { S:'&#9824;', H:'&#9829;', D:'&#9830;', C:'&#9827;' };
+const RED_SUITS = ['H','D'];
+
 const socket = io();
-let mySeatIdx = null;
-let myCode = null;
+let myRoomCode = null;
+let mySeatIndex = null;
+let iAmHost = false;
+let latestView = null;
 
-function log(msg){
-  const el = document.getElementById('log');
-  el.textContent = (typeof msg === 'string' ? msg : JSON.stringify(msg, null, 2)) + '\n' + el.textContent;
+const $ = id => document.getElementById(id);
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
 }
 
-function joinLobby(){ socket.emit('lobby:join'); }
-socket.on('lobby:update', rooms => log({ publicRooms: rooms }));
+socket.on('connect', () => { $('connStatus').textContent = 'LIVE'; socket.emit('lobby:join'); });
+socket.on('disconnect', () => { $('connStatus').textContent = 'RECONNECTING…'; });
 
-function createRoom(isPublic){
-  socket.emit('room:create', {
-    name: document.getElementById('name').value + "'s table",
-    isPublic,
-    hostName: document.getElementById('name').value,
-    config: { numPlayers: 3, startingHandSize: 5, useJokers: true, allowStacking: true }
-  }, (res) => {
-    log(res);
-    if(res.ok){ myCode = res.code; mySeatIdx = res.seatIndex; document.getElementById('joinCode').value = res.code; }
-  });
-}
-
-function joinRoom(){
-  socket.emit('room:join', {
-    code: document.getElementById('joinCode').value,
-    name: document.getElementById('name').value
-  }, (res) => {
-    log(res);
-    if(res.ok){ myCode = res.code; mySeatIdx = res.seatIndex; }
-  });
-}
-
-socket.on('room:update', r => log({ roomUpdate: r }));
-socket.on('room:error', e => log({ roomError: e }));
-
-function startGame(){ socket.emit('room:start'); }
-
-socket.on('game:state', view => {
-  log({ gameState: view });
-  const me = view.players[view.you];
-  const handEl = document.getElementById('hand');
-  handEl.innerHTML = '';
-  (me.hand || []).forEach(card => {
-    const d = document.createElement('div');
-    d.className = 'card';
-    d.textContent = card.rank === 'JOKER' ? 'JOKER' : card.rank + card.suit;
-    d.onclick = () => socket.emit('game:play', { cardId: card.id });
-    handEl.appendChild(d);
+socket.on('lobby:update', rooms => {
+  const list = $('lobbyList');
+  list.innerHTML = '';
+  if (!rooms.length) { show('lobbyEmpty'); return; }
+  hide('lobbyEmpty');
+  rooms.forEach(r => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${escapeHtml(r.name)}</span><span class="meta">${r.seated}/${r.maxSeats} players</span>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn small secondary';
+    btn.textContent = 'Join';
+    btn.onclick = () => joinRoom(r.code);
+    li.appendChild(btn);
+    list.appendChild(li);
   });
 });
 
-socket.on('game:over', info => log({ gameOver: info }));
+function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function currentName(){ return $('nameInput').value.trim() || 'Player'; }
 
-function draw(){ socket.emit('game:draw'); }
-function pass(){ socket.emit('game:pass'); }
+$('createPublicBtn').onclick = () => createRoom(true);
+$('createPrivateBtn').onclick = () => createRoom(false);
+$('joinBtn').onclick = () => {
+  const code = $('joinCodeInput').value.trim().toUpperCase();
+  if (code.length !== 5) return toast('Enter the 5-letter room code.');
+  joinRoom(code);
+};
+
+function createRoom(isPublic){
+  socket.emit('room:create', {
+    name: currentName() + "'s table",
+    isPublic,
+    hostName: currentName(),
+    config: { numPlayers: 4, startingHandSize: 5, useJokers: true, allowStacking: true }
+  }, (res) => {
+    if (!res.ok) return toast(res.error || 'Could not create room.');
+    enterWaitingRoom(res.code, res.seatIndex);
+  });
+}
+
+function joinRoom(code){
+  socket.emit('room:join', { code, name: currentName() }, (res) => {
+    if (!res.ok) return toast(res.error || 'Could not join room.');
+    enterWaitingRoom(res.code, res.seatIndex);
+  });
+}
+
+function enterWaitingRoom(code, seatIndex){
+  myRoomCode = code;
+  mySeatIndex = seatIndex;
+  hide('setup-screen');
+  show('waiting-screen');
+  $('roomCodeDisplay').textContent = code;
+  socket.emit('lobby:leave');
+}
+
+socket.on('room:update', room => {
+  if (room.code !== myRoomCode) return;
+  iAmHost = (room.hostSeat === mySeatIndex);
+  const list = $('seatList');
+  list.innerHTML = '';
+  room.seats.forEach((seat, i) => {
+    const li = document.createElement('li');
+    if (!seat) { li.className = 'empty'; li.textContent = 'Open seat'; }
+    else {
+      const hostTag = (i === room.hostSeat) ? '<span class="host-tag">HOST</span>' : '';
+      const status = seat.connected ? '' : ' (reconnecting…)';
+      li.innerHTML = `<span>${escapeHtml(seat.name)}${status}</span>${hostTag}`;
+    }
+    list.appendChild(li);
+  });
+  $('startGameBtn').classList.toggle('hidden', !iAmHost);
+  $('waitingTitle').textContent = iAmHost ? 'Waiting for players — you are host' : 'Waiting for host to start…';
+
+  if (room.started) {
+    hide('waiting-screen');
+    show('game-screen');
+  }
+});
+
+socket.on('room:error', msg => toast(msg));
+
+$('startGameBtn').onclick = () => socket.emit('room:start');
+$('leaveRoomBtn').onclick = () => backToLobby();
+$('leaveGameBtn').onclick = () => backToLobby();
+$('backToLobbyBtn').onclick = () => { hide('winModal'); backToLobby(); };
+
+function backToLobby(){
+  socket.emit('room:leave');
+  myRoomCode = null; mySeatIndex = null; latestView = null;
+  hide('waiting-screen'); hide('game-screen');
+  show('setup-screen');
+  socket.emit('lobby:join');
+}
+
+function renderCard(card, extraClass){
+  const div = document.createElement('div');
+  if (card.rank === 'JOKER') {
+    div.className = 'card joker ' + (extraClass || '');
+    div.innerHTML = `<div class="rank-top">JOKER</div><div class="suit-mid">★</div><div class="rank-bot">JOKER</div>`;
+    return div;
+  }
+  const isRed = RED_SUITS.includes(card.suit);
+  div.className = `card ${isRed ? 'red' : 'black'} ${extraClass || ''}`;
+  const sym = SUIT_SYMBOL[card.suit] || '';
+  div.innerHTML = `<div class="rank-top">${card.rank}${sym}</div><div class="suit-mid">${sym}</div><div class="rank-bot">${card.rank}${sym}</div>`;
+  return div;
+}
+
+socket.on('game:state', view => {
+  latestView = view;
+  show('game-screen');
+  hide('waiting-screen');
+  renderState(view);
+});
+
+socket.on('game:over', info => {
+  $('winTitle').textContent = 'Game over!';
+  $('winSub').textContent = `${info.winnerName} wins the round.`;
+  show('winModal');
+});
+
+function isValidPlayClientSide(card, view){
+  if (view.pendingPick) {
+    const group = card.rank === 'JOKER' ? 'jokerPick' : (card.rank === '2' || card.rank === '3' ? 'normalPick' : null);
+    return group === view.pendingPick.group;
+  }
+  if (view.demandedSuit) {
+    if (card.rank === 'A' || card.rank === 'JOKER') return true;
+    return card.suit === view.demandedSuit;
+  }
+  const top = view.topCard;
+  if (card.rank === 'A' || card.rank === 'JOKER') return true;
+  if (top.rank === 'JOKER') return false;
+  return card.rank === top.rank || card.suit === top.suit;
+}
+
+function renderState(view){
+  const me = view.players[view.you];
+  const isMyTurn = view.currentPlayerIndex === view.you;
+
+  const oppRow = $('opponentsRow');
+  oppRow.innerHTML = '';
+  view.players.forEach((p, i) => {
+    if (i === view.you) return;
+    const chip = document.createElement('div');
+    chip.className = 'opp-chip' + (view.currentPlayerIndex === i ? ' active' : '');
+    chip.innerHTML = `
+      <div class="name">${escapeHtml(p.name)}${view.currentPlayerIndex === i ? ' ⬅' : ''}</div>
+      <div class="cardcount"><div class="backmini"></div>${p.handCount}</div>
+      <div class="status"></div>`;
+    oppRow.appendChild(chip);
+  });
+
+  const drawPile = $('drawPile');
+  $('drawCount').textContent = view.deckCount;
+  drawPile.classList.toggle('drawable', isMyTurn);
+  drawPile.classList.toggle('disabled', !isMyTurn);
+  drawPile.onclick = () => { if (isMyTurn) socket.emit('game:draw'); };
+
+  const discardPile = $('discardPile');
+  discardPile.innerHTML = '';
+  discardPile.appendChild(renderCard(view.topCard));
+  if (view.pendingPick) {
+    const b = document.createElement('div'); b.className = 'badge pick';
+    b.textContent = `PICK ${view.pendingPick.amount}`;
+    discardPile.appendChild(b);
+  } else if (view.demandedSuit) {
+    const b = document.createElement('div'); b.className = 'badge suit';
+    b.innerHTML = `SUIT: ${SUIT_SYMBOL[view.demandedSuit]}`;
+    discardPile.appendChild(b);
+  }
+
+  const logList = $('logList');
+  logList.innerHTML = '';
+  view.log.slice(-30).forEach(line => {
+    const li = document.createElement('li');
+    li.textContent = line;
+    logList.appendChild(li);
+  });
+  logList.scrollTop = logList.scrollHeight;
+
+  $('statusText').textContent = isMyTurn ? "Your turn" : `${view.players[view.currentPlayerIndex].name}'s turn`;
+  $('passBtn').disabled = !(isMyTurn && view.justDrewCard);
+  $('passBtn').onclick = () => socket.emit('game:pass');
+
+  const handStrip = $('handStrip');
+  handStrip.innerHTML = '';
+  const hand = me.hand || [];
+  const mid = (hand.length - 1) / 2;
+  hand.forEach((card, i) => {
+    const valid = isMyTurn && !view.awaitingSuitChoice && isValidPlayClientSide(card, view);
+    const cardEl = renderCard(card, valid ? 'playable-glow' : (isMyTurn ? 'invalid' : ''));
+    const offset = i - mid; // negative = left of center, positive = right
+    cardEl.style.setProperty('--fan-rot', (offset * 3.5) + 'deg');
+    cardEl.style.marginTop = (Math.abs(offset) * 5) + 'px'; // slight arc: outer cards sit a touch lower
+    cardEl.onclick = () => {
+      if (!isMyTurn || view.awaitingSuitChoice) return;
+      socket.emit('game:play', { cardId: card.id });
+    };
+    handStrip.appendChild(cardEl);
+  });
+
+  if (view.awaitingSuitChoice && view.awaitingSuitChooserId === socket.id) {
+    show('suitModal');
+  } else {
+    hide('suitModal');
+  }
+}
+
+document.querySelectorAll('.suit-btn').forEach(btn => {
+  btn.onclick = () => {
+    socket.emit('game:chooseSuit', { suit: btn.dataset.suit });
+    hide('suitModal');
+  };
+});
 </script>
 </body>
 </html>
