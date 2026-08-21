@@ -203,13 +203,37 @@ input{font-family:inherit;}
 .win-box h2{font-family:var(--font-display); font-size:22px; margin-bottom:6px;}
 .win-box p{font-size:13px; margin-bottom:18px; opacity:.85;}
 .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:var(--red); color:var(--paper); padding:10px 16px; border:2px solid var(--ink); font-family:var(--font-mono); font-size:12px; font-weight:700; z-index:60;}
+
+/* ---- Animations ---- */
+@keyframes dealIn{ from{opacity:0; transform:translateY(26px) scale(.85);} to{opacity:1; transform:translateY(0) scale(1);} }
+.card-enter{ animation: dealIn .28s ease-out; }
+
+@keyframes cardPop{ 0%{transform:scale(.6) rotate(-6deg); opacity:0;} 65%{transform:scale(1.12) rotate(3deg); opacity:1;} 100%{transform:scale(1) rotate(0);} }
+.card-pop{ animation: cardPop .3s cubic-bezier(.2,.8,.3,1.3); }
+
+@keyframes shakeCard{ 0%,100%{transform:translateX(0);} 20%{transform:translateX(-7px);} 40%{transform:translateX(7px);} 60%{transform:translateX(-5px);} 80%{transform:translateX(5px);} }
+.card-shake{ animation: shakeCard .35s ease; }
+
+@keyframes pulseTurn{ 0%{box-shadow:0 0 0 0 rgba(242,183,5,.7);} 70%{box-shadow:0 0 0 12px rgba(242,183,5,0);} 100%{box-shadow:0 0 0 0 rgba(242,183,5,0);} }
+.status-text.turn-pulse{ animation: pulseTurn .9s ease-out 2; }
+
+@keyframes trophyBounce{ 0%{transform:scale(0) rotate(-25deg);} 60%{transform:scale(1.25) rotate(10deg);} 100%{transform:scale(1) rotate(0);} }
+.win-box .trophy{ animation: trophyBounce .5s cubic-bezier(.2,.8,.3,1.3); }
+
+.sound-toggle{
+  font-family:var(--font-mono); font-size:16px; background:var(--paper); color:var(--ink);
+  border:2px solid var(--ink); padding:4px 9px; cursor:pointer; margin-left:8px;
+}
 </style>
 </head>
 <body>
 
 <div class="banner">
   <h1>MATATU RUSH</h1>
-  <span class="sub" id="connStatus">CONNECTING…</span>
+  <div style="display:flex; align-items:center;">
+    <span class="sub" id="connStatus">CONNECTING…</span>
+    <button class="sound-toggle" id="soundToggle" title="Toggle sound">🔊</button>
+  </div>
 </div>
 
 <div id="setup-screen">
@@ -318,6 +342,34 @@ let myRoomCode = null;
 let mySeatIndex = null;
 let iAmHost = false;
 let latestView = null;
+let prevView = null; // used to diff against the new state and decide what to animate/sound
+
+/* ---------------- Sound (synthesized — no audio files to load) ---------------- */
+let audioCtx = null;
+let soundOn = true;
+function ensureAudio(){
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function tone(freq, start, duration, type='sine', vol=0.16){
+  if (!soundOn || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, audioCtx.currentTime + start);
+  gain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + start + duration);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(audioCtx.currentTime + start);
+  osc.stop(audioCtx.currentTime + start + duration + 0.02);
+}
+const sounds = {
+  play:   () => { tone(520, 0, 0.09, 'square', 0.14); tone(340, 0.04, 0.08, 'square', 0.1); },
+  draw:   () => { tone(260, 0, 0.07, 'triangle', 0.12); },
+  invalid:() => { tone(140, 0, 0.16, 'sawtooth', 0.14); },
+  turn:   () => { tone(523, 0, 0.1, 'sine', 0.14); tone(659, 0.1, 0.14, 'sine', 0.14); },
+  win:    () => { tone(523,0,0.14,'triangle',0.16); tone(659,0.13,0.14,'triangle',0.16); tone(784,0.26,0.14,'triangle',0.16); tone(1047,0.39,0.3,'triangle',0.18); }
+};
 
 const $ = id => document.getElementById(id);
 function show(id){ $(id).classList.remove('hidden'); }
@@ -333,6 +385,32 @@ function toast(msg){
 
 socket.on('connect', () => { $('connStatus').textContent = 'LIVE'; socket.emit('lobby:join'); });
 socket.on('disconnect', () => { $('connStatus').textContent = 'RECONNECTING…'; });
+
+$('soundToggle').onclick = () => {
+  ensureAudio();
+  soundOn = !soundOn;
+  $('soundToggle').textContent = soundOn ? '🔊' : '🔇';
+};
+document.body.addEventListener('click', ensureAudio, { once: true });
+
+socket.on('game:invalidMove', ({ reason }) => {
+  sounds.invalid();
+  const readable = {
+    'not-your-turn': "It's not your turn.",
+    'illegal-card': "That card doesn't match — check suit or rank.",
+    'must-choose-suit-first': 'Choose a suit first.',
+    'card-not-in-hand': "That card isn't in your hand anymore.",
+    'already-drew-this-turn': 'You already drew this turn.',
+    'must-draw-before-passing': 'Draw a card before you can pass.',
+    'cant-finish-on-power-card': "You can't finish the game on that card.",
+  }[reason] || 'Invalid move.';
+  toast(readable);
+  if (lastAttemptedCardEl) {
+    lastAttemptedCardEl.classList.remove('card-shake');
+    void lastAttemptedCardEl.offsetWidth; // restart animation
+    lastAttemptedCardEl.classList.add('card-shake');
+  }
+});
 
 socket.on('lobby:update', rooms => {
   const list = $('lobbyList');
@@ -423,11 +501,13 @@ $('backToLobbyBtn').onclick = () => { hide('winModal'); backToLobby(); };
 
 function backToLobby(){
   socket.emit('room:leave');
-  myRoomCode = null; mySeatIndex = null; latestView = null;
+  myRoomCode = null; mySeatIndex = null; latestView = null; prevView = null;
   hide('waiting-screen'); hide('game-screen');
   show('setup-screen');
   socket.emit('lobby:join');
 }
+
+let lastAttemptedCardEl = null;
 
 function renderCard(card, extraClass){
   const div = document.createElement('div');
@@ -451,6 +531,7 @@ socket.on('game:state', view => {
 });
 
 socket.on('game:over', info => {
+  sounds.win();
   $('winTitle').textContent = 'Game over!';
   $('winSub').textContent = `${info.winnerName} wins the round.`;
   show('winModal');
@@ -475,6 +556,21 @@ function renderState(view){
   const me = view.players[view.you];
   const isMyTurn = view.currentPlayerIndex === view.you;
 
+  // Diff against the previous snapshot to decide what to animate/sound.
+  const prevTopId = prevView ? prevView.topCard.id : null;
+  const prevDeckCount = prevView ? prevView.deckCount : view.deckCount;
+  const prevWasMyTurn = prevView ? (prevView.currentPlayerIndex === prevView.you) : false;
+  const prevMyHandIds = new Set(
+    (prevView && prevView.players[prevView.you].hand) ? prevView.players[prevView.you].hand.map(c => c.id) : []
+  );
+  const topCardChanged = prevView && view.topCard.id !== prevTopId;
+  const deckShrank = prevView && view.deckCount < prevDeckCount;
+  const justBecameMyTurn = prevView && !prevWasMyTurn && isMyTurn;
+
+  if (topCardChanged) sounds.play();
+  else if (deckShrank) sounds.draw();
+  if (justBecameMyTurn) sounds.turn();
+
   const oppRow = $('opponentsRow');
   oppRow.innerHTML = '';
   view.players.forEach((p, i) => {
@@ -496,7 +592,8 @@ function renderState(view){
 
   const discardPile = $('discardPile');
   discardPile.innerHTML = '';
-  discardPile.appendChild(renderCard(view.topCard));
+  const topCardEl = renderCard(view.topCard, topCardChanged ? 'card-pop' : '');
+  discardPile.appendChild(topCardEl);
   if (view.pendingPick) {
     const b = document.createElement('div'); b.className = 'badge pick';
     b.textContent = `PICK ${view.pendingPick.amount}`;
@@ -517,6 +614,12 @@ function renderState(view){
   logList.scrollTop = logList.scrollHeight;
 
   $('statusText').textContent = isMyTurn ? "Your turn" : `${view.players[view.currentPlayerIndex].name}'s turn`;
+  if (justBecameMyTurn) {
+    const st = $('statusText');
+    st.classList.remove('turn-pulse');
+    void st.offsetWidth; // restart animation
+    st.classList.add('turn-pulse');
+  }
   $('passBtn').disabled = !(isMyTurn && view.justDrewCard);
   $('passBtn').onclick = () => socket.emit('game:pass');
 
@@ -526,12 +629,16 @@ function renderState(view){
   const mid = (hand.length - 1) / 2;
   hand.forEach((card, i) => {
     const valid = isMyTurn && !view.awaitingSuitChoice && isValidPlayClientSide(card, view);
-    const cardEl = renderCard(card, valid ? 'playable-glow' : (isMyTurn ? 'invalid' : ''));
+    const isNewCard = prevView && !prevMyHandIds.has(card.id);
+    let extraClass = valid ? 'playable-glow' : (isMyTurn ? 'invalid' : '');
+    if (isNewCard) extraClass += ' card-enter';
+    const cardEl = renderCard(card, extraClass);
     const offset = i - mid; // negative = left of center, positive = right
     cardEl.style.setProperty('--fan-rot', (offset * 3.5) + 'deg');
     cardEl.style.marginTop = (Math.abs(offset) * 5) + 'px'; // slight arc: outer cards sit a touch lower
     cardEl.onclick = () => {
       if (!isMyTurn || view.awaitingSuitChoice) return;
+      lastAttemptedCardEl = cardEl;
       socket.emit('game:play', { cardId: card.id });
     };
     handStrip.appendChild(cardEl);
@@ -542,6 +649,8 @@ function renderState(view){
   } else {
     hide('suitModal');
   }
+
+  prevView = view;
 }
 
 // On mobile, the log starts collapsed (out of the way) — tap the header to expand it.
