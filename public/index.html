@@ -39,12 +39,11 @@ input{font-family:inherit;}
   min-height:70px;
 }
 .banner-logo{
-  position:absolute; left:12px; top:50%; transform:translateY(-50%);
-  height:135px; width:auto; max-width:none;
+  position:absolute; left:8px; top:50%; transform:translateY(-50%);
+  width:clamp(150px,34vw,280px); height:auto; max-width:none;
   z-index:5; pointer-events:none;
-  filter: drop-shadow(2px 4px 3px rgba(0,0,0,.4));
 }
-@media (max-width:600px){ .banner-logo{ height:96px; left:6px; } }
+@media (max-width:600px){ .banner-logo{ width:36vw; left:4px; } }
 .banner .sub{font-family:var(--font-mono); font-size:11px; color:var(--ink); font-weight:700; background:var(--paper); padding:4px 8px; border:2px solid var(--ink);}
 
 #setup-screen{max-width:640px; margin:24px auto; padding:0 16px 60px;}
@@ -243,7 +242,7 @@ input{font-family:inherit;}
 <body>
 
 <div class="banner">
-  <img src="/logo-banner.png?v=2" alt="Last Card Live" class="banner-logo">
+  <img src="/logo-banner.png?v=3" alt="Last Card Live" class="banner-logo">
   <div style="display:flex; align-items:center;">
     <span class="sub" id="connStatus">CONNECTING…</span>
     <button class="sound-toggle" id="soundToggle" title="Toggle sound">🔊</button>
