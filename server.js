@@ -79,7 +79,7 @@ function broadcastGameState(room) {
   });
 }
 
-function createRoom({ name, isPublic, config, hostSocketId, hostName }) {
+function createRoom({ name, isPublic, config, hostSocketId, hostName, hostToken }) {
   const code = makeRoomCode();
   const maxSeats = Math.min(Math.max(config.numPlayers || 3, 2), MAX_SEATS);
   const room = {
@@ -97,8 +97,9 @@ function createRoom({ name, isPublic, config, hostSocketId, hostName }) {
     hostSeat: 0,
     started: false,
     engine: null,
+    disconnectTimers: {}, // seatIdx -> timeout handle, so a rejoin can cancel the pending seat removal
   };
-  room.seats[0] = { socketId: hostSocketId, name: hostName, connected: true };
+  room.seats[0] = { socketId: hostSocketId, name: hostName, connected: true, token: hostToken };
   rooms.set(code, room);
   return room;
 }
@@ -124,26 +125,54 @@ io.on('connection', (socket) => {
   socket.on('lobby:leave', () => socket.leave('lobby'));
 
   /* ---- Room creation / joining ---- */
-  socket.on('room:create', ({ name, isPublic, config, hostName }, ack) => {
-    const room = createRoom({ name, isPublic, config: config || {}, hostSocketId: socket.id, hostName: hostName || 'Host' });
+  socket.on('room:create', ({ name, isPublic, config, hostName, token }, ack) => {
+    const room = createRoom({ name, isPublic, config: config || {}, hostSocketId: socket.id, hostName: hostName || 'Host', hostToken: token });
     socket.join(room.code);
     ack && ack({ ok: true, code: room.code, seatIndex: 0 });
     broadcastRoom(room);
     if (room.isPublic) broadcastLobby();
   });
 
-  socket.on('room:join', ({ code, name }, ack) => {
+  socket.on('room:join', ({ code, name, token }, ack) => {
     const room = rooms.get((code || '').toUpperCase());
     if (!room) return ack && ack({ ok: false, error: 'Room not found.' });
     if (room.started) return ack && ack({ ok: false, error: 'That game already started.' });
     const openIdx = firstOpenSeat(room);
     if (openIdx === -1) return ack && ack({ ok: false, error: 'Room is full.' });
 
-    room.seats[openIdx] = { socketId: socket.id, name: name || 'Player', connected: true };
+    room.seats[openIdx] = { socketId: socket.id, name: name || 'Player', connected: true, token };
     socket.join(room.code);
     ack && ack({ ok: true, code: room.code, seatIndex: openIdx });
     broadcastRoom(room);
     if (room.isPublic) broadcastLobby();
+  });
+
+  /* ---- Reconnection ----
+     A dropped connection (phone lock, brief signal loss) gets a new socket.id
+     when it reconnects. The client remembers its room + a private token and
+     calls this to reclaim the same seat instead of losing its place/hand. */
+  socket.on('room:rejoin', ({ code, token }, ack) => {
+    const room = rooms.get((code || '').toUpperCase());
+    if (!room) return ack && ack({ ok: false, error: 'That room no longer exists.' });
+    const idx = room.seats.findIndex(s => s && s.token && s.token === token);
+    if (idx === -1) return ack && ack({ ok: false, error: 'Your seat is no longer held.' });
+
+    room.seats[idx].socketId = socket.id;
+    room.seats[idx].connected = true;
+    if (room.disconnectTimers[idx]) {
+      clearTimeout(room.disconnectTimers[idx]);
+      delete room.disconnectTimers[idx];
+    }
+    socket.join(room.code);
+    ack && ack({ ok: true, code: room.code, seatIndex: idx, started: room.started });
+    broadcastRoom(room);
+
+    if (room.started && room.engine) {
+      const engineIdx = room.seatToEngineIdx[idx];
+      if (engineIdx !== undefined) {
+        socket.emit('game:state', room.engine.viewFor(engineIdx));
+      }
+    }
   });
 
   socket.on('room:leave', () => {
@@ -230,10 +259,11 @@ io.on('connection', (socket) => {
     room.seats[idx].connected = false;
     broadcastRoom(room);
 
-    setTimeout(() => {
+    room.disconnectTimers[idx] = setTimeout(() => {
       const stillThere = room.seats[idx];
       if (stillThere && stillThere.socketId === socket.id && !stillThere.connected) {
         room.seats[idx] = null;
+        delete room.disconnectTimers[idx];
         if (seatCount(room) === 0) {
           rooms.delete(room.code);
         } else {
@@ -242,7 +272,7 @@ io.on('connection', (socket) => {
         }
         if (room.isPublic) broadcastLobby();
       }
-    }, 30000); // 30s grace period
+    }, 45000); // 45s grace period — enough for a phone lock or a brief signal drop
   });
 });
 
