@@ -342,6 +342,14 @@ const SUIT_SYMBOL = { S:'&#9824;', H:'&#9829;', D:'&#9830;', C:'&#9827;' };
 const RED_SUITS = ['H','D'];
 
 const socket = io();
+
+// A private per-device token, kept in localStorage, lets this device reclaim
+// its seat after a dropped connection instead of starting over.
+let myToken = localStorage.getItem('matatuToken');
+if (!myToken) {
+  myToken = 'p_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  localStorage.setItem('matatuToken', myToken);
+}
 let myRoomCode = null;
 let mySeatIndex = null;
 let iAmHost = false;
@@ -387,7 +395,38 @@ function toast(msg){
   setTimeout(() => t.remove(), 2600);
 }
 
-socket.on('connect', () => { $('connStatus').textContent = 'LIVE'; socket.emit('lobby:join'); });
+socket.on('connect', () => {
+  $('connStatus').textContent = 'LIVE';
+  attemptRejoinOrLobby();
+});
+
+function attemptRejoinOrLobby(){
+  const saved = localStorage.getItem('matatuSession');
+  if (!saved) { socket.emit('lobby:join'); return; }
+  let session;
+  try { session = JSON.parse(saved); } catch(e) { localStorage.removeItem('matatuSession'); socket.emit('lobby:join'); return; }
+
+  socket.emit('room:rejoin', { code: session.code, token: myToken }, (res) => {
+    if (res && res.ok) {
+      myRoomCode = res.code;
+      mySeatIndex = res.seatIndex;
+      hide('setup-screen');
+      if (res.started) {
+        hide('waiting-screen');
+        show('game-screen');
+      } else {
+        hide('game-screen');
+        show('waiting-screen');
+        $('roomCodeDisplay').textContent = res.code;
+      }
+      toast('Reconnected to your game.');
+    } else {
+      localStorage.removeItem('matatuSession');
+      show('setup-screen');
+      socket.emit('lobby:join');
+    }
+  });
+}
 socket.on('disconnect', () => { $('connStatus').textContent = 'RECONNECTING…'; });
 
 $('soundToggle').onclick = () => {
@@ -449,6 +488,7 @@ function createRoom(isPublic){
     name: currentName() + "'s table",
     isPublic,
     hostName: currentName(),
+    token: myToken,
     config: { numPlayers: 4, startingHandSize: 5, useJokers: true, allowStacking: true }
   }, (res) => {
     if (!res.ok) return toast(res.error || 'Could not create room.');
@@ -457,7 +497,7 @@ function createRoom(isPublic){
 }
 
 function joinRoom(code){
-  socket.emit('room:join', { code, name: currentName() }, (res) => {
+  socket.emit('room:join', { code, name: currentName(), token: myToken }, (res) => {
     if (!res.ok) return toast(res.error || 'Could not join room.');
     enterWaitingRoom(res.code, res.seatIndex);
   });
@@ -466,6 +506,7 @@ function joinRoom(code){
 function enterWaitingRoom(code, seatIndex){
   myRoomCode = code;
   mySeatIndex = seatIndex;
+  localStorage.setItem('matatuSession', JSON.stringify({ code, seatIndex }));
   hide('setup-screen');
   show('waiting-screen');
   $('roomCodeDisplay').textContent = code;
@@ -505,6 +546,7 @@ $('backToLobbyBtn').onclick = () => { hide('winModal'); backToLobby(); };
 
 function backToLobby(){
   socket.emit('room:leave');
+  localStorage.removeItem('matatuSession');
   myRoomCode = null; mySeatIndex = null; latestView = null; prevView = null;
   hide('waiting-screen'); hide('game-screen');
   show('setup-screen');
