@@ -218,21 +218,21 @@ class MatatuEngine {
       case 'DRAW': return this._handleDraw(cmd);
       case 'PASS': return this._handlePass(cmd);
       case 'CHOOSE_SUIT': return this._handleChooseSuit(cmd);
-      default: return this.emit('invalidMove', { reason: 'unknown-command' });
+      default: return this.emit('invalidMove', { reason: 'unknown-command', playerIdx: cmd.playerIdx });
     }
   }
 
   _handlePlay({ playerIdx, cardId }) {
     const s = this.state;
-    if (playerIdx !== s.currentPlayerIndex) return this.emit('invalidMove', { reason: 'not-your-turn' });
-    if (s.awaitingSuitChoice) return this.emit('invalidMove', { reason: 'must-choose-suit-first' });
+    if (playerIdx !== s.currentPlayerIndex) return this.emit('invalidMove', { reason: 'not-your-turn', playerIdx });
+    if (s.awaitingSuitChoice) return this.emit('invalidMove', { reason: 'must-choose-suit-first', playerIdx });
     const player = s.players[playerIdx];
     const card = player.hand.find(c => c.id === cardId);
-    if (!card) return this.emit('invalidMove', { reason: 'card-not-in-hand' });
-    if (!this.isValidPlay(card)) return this.emit('invalidMove', { reason: 'illegal-card' });
+    if (!card) return this.emit('invalidMove', { reason: 'card-not-in-hand', playerIdx });
+    if (!this.isValidPlay(card)) return this.emit('invalidMove', { reason: 'illegal-card', playerIdx });
 
     if (!this.config.allowWinningOnPowerCard && player.hand.length === 1 && isSpecial(card)) {
-      return this.emit('invalidMove', { reason: 'cant-finish-on-power-card' });
+      return this.emit('invalidMove', { reason: 'cant-finish-on-power-card', playerIdx });
     }
 
     player.hand = player.hand.filter(c => c.id !== cardId);
@@ -294,9 +294,9 @@ class MatatuEngine {
     const s = this.state;
     const chooserIdx = s.players.findIndex(p => p.id === s.awaitingSuitChooserId);
     if (!s.awaitingSuitChoice || playerIdx !== chooserIdx) {
-      return this.emit('invalidMove', { reason: 'no-suit-choice-pending' });
+      return this.emit('invalidMove', { reason: 'no-suit-choice-pending', playerIdx });
     }
-    if (!SUITS.includes(suit)) return this.emit('invalidMove', { reason: 'bad-suit' });
+    if (!SUITS.includes(suit)) return this.emit('invalidMove', { reason: 'bad-suit', playerIdx });
 
     s.demandedSuit = suit;
     s.awaitingSuitChoice = false;
@@ -308,8 +308,8 @@ class MatatuEngine {
 
   _handleDraw({ playerIdx }) {
     const s = this.state;
-    if (playerIdx !== s.currentPlayerIndex) return this.emit('invalidMove', { reason: 'not-your-turn' });
-    if (s.awaitingSuitChoice) return this.emit('invalidMove', { reason: 'must-choose-suit-first' });
+    if (playerIdx !== s.currentPlayerIndex) return this.emit('invalidMove', { reason: 'not-your-turn', playerIdx });
+    if (s.awaitingSuitChoice) return this.emit('invalidMove', { reason: 'must-choose-suit-first', playerIdx });
 
     if (s.pendingPick) {
       const n = s.pendingPick.amount;
@@ -333,7 +333,7 @@ class MatatuEngine {
       }
     }
 
-    if (s.justDrewCard !== null) return this.emit('invalidMove', { reason: 'already-drew-this-turn' });
+    if (s.justDrewCard !== null) return this.emit('invalidMove', { reason: 'already-drew-this-turn', playerIdx });
     const drawnCards = this._drawN(playerIdx, 1);
     if (drawnCards.length === 0) {
       this._log(`Market and discard pile are both empty — ${s.players[playerIdx].name} can't draw.`);
@@ -351,8 +351,8 @@ class MatatuEngine {
 
   _handlePass({ playerIdx }) {
     const s = this.state;
-    if (playerIdx !== s.currentPlayerIndex) return this.emit('invalidMove', { reason: 'not-your-turn' });
-    if (s.justDrewCard === null) return this.emit('invalidMove', { reason: 'must-draw-before-passing' });
+    if (playerIdx !== s.currentPlayerIndex) return this.emit('invalidMove', { reason: 'not-your-turn', playerIdx });
+    if (s.justDrewCard === null) return this.emit('invalidMove', { reason: 'must-draw-before-passing', playerIdx });
     this._log(`${s.players[playerIdx].name} passes.`);
     this._advanceTurn(1);
     this.emit('stateChange', s);
