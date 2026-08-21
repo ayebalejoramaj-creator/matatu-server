@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>MATATU RUSH</title>
+<title>LAST CARD LIVE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lobster&family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --ink:        #14131A;
@@ -19,6 +19,7 @@
   --line:       6px;
   --radius:     2px;
   --font-display: 'Archivo Black', sans-serif;
+  --font-title:   'Lobster', cursive;
   --font-body:    'Space Grotesk', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 }
@@ -30,12 +31,20 @@ input{font-family:inherit;}
 .hidden{display:none !important;}
 
 .banner{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:14px 22px;
+  display:flex; align-items:center; justify-content:flex-end;
+  padding:6px 22px;
   background: linear-gradient(90deg, var(--red) 0 33.33%, var(--yellow) 33.33% 66.66%, var(--blue) 66.66% 100%);
   border-bottom: var(--line) solid var(--ink);
+  overflow:visible; position:relative; z-index:1;
+  min-height:70px;
 }
-.banner h1{font-family:var(--font-display); font-size:clamp(20px,4vw,30px); color:var(--ink); letter-spacing:1px; text-shadow:2px 2px 0 rgba(255,255,255,.35);}
+.banner-logo{
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  height:135px; width:auto; max-width:none;
+  z-index:5; pointer-events:none;
+  filter: drop-shadow(2px 4px 3px rgba(0,0,0,.4));
+}
+@media (max-width:600px){ .banner-logo{ height:96px; left:6px; } }
 .banner .sub{font-family:var(--font-mono); font-size:11px; color:var(--ink); font-weight:700; background:var(--paper); padding:4px 8px; border:2px solid var(--ink);}
 
 #setup-screen{max-width:640px; margin:24px auto; padding:0 16px 60px;}
@@ -234,7 +243,7 @@ input{font-family:inherit;}
 <body>
 
 <div class="banner">
-  <h1>MATATU RUSH</h1>
+  <img src="/logo-banner.png?v=2" alt="Last Card Live" class="banner-logo">
   <div style="display:flex; align-items:center;">
     <span class="sub" id="connStatus">CONNECTING…</span>
     <button class="sound-toggle" id="soundToggle" title="Toggle sound">🔊</button>
