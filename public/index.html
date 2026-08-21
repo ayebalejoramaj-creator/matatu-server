@@ -118,14 +118,18 @@ input{font-family:inherit;}
     padding:8px 0 10px; margin:0 -10px; width:calc(100% + 20px);
     z-index:10;
   }
-  .hand-strip{padding:26px 0 4px; perspective:none;}
+  .hand-strip{padding:26px 0 4px;}
   .hand-strip .card{
     margin-left:-22px;
-    transform: none !important;
-    transition: margin-top .12s ease, box-shadow .12s ease;
+    transform: rotateZ(var(--fan-rot, 0deg));
+    transition: transform .16s cubic-bezier(.2,.8,.3,1.2), margin-top .12s ease, box-shadow .16s ease;
   }
-  .hand-strip .card:active{margin-top:-14px !important; z-index:20; box-shadow:4px 8px 0 rgba(0,0,0,.45);}
-  .hand-strip .card:hover{transform:none;}
+  .hand-strip .card:active{
+    transform: scale(1.14) translateY(-22px) rotateZ(0deg) !important;
+    margin-top:0 !important; z-index:20;
+    box-shadow:4px 10px 0 rgba(0,0,0,.4), 0 20px 26px rgba(0,0,0,.5);
+  }
+  .hand-strip .card:hover{transform: scale(1.1) translateY(-18px) rotateZ(0deg); z-index:20; box-shadow:4px 10px 0 rgba(0,0,0,.4), 0 20px 26px rgba(0,0,0,.5);}
 }
 .opponents-row{grid-area:opponents; display:flex; gap:12px; flex-wrap:wrap;}
 .opp-chip{background:var(--stage-2); border:3px solid var(--ink); padding:10px 14px; min-width:140px; position:relative;}
