@@ -184,7 +184,12 @@ io.on('connection', (socket) => {
     room.engine.on('gameOver', ({ winner }) => {
       io.to(room.code).emit('game:over', { winnerName: room.engine.state.players[winner].name });
     });
-    room.engine.on('invalidMove', ({ reason }) => { /* per-command ack handles this */ });
+    room.engine.on('invalidMove', ({ reason, playerIdx }) => {
+      const seatIdx = Object.keys(room.seatToEngineIdx).find(s => room.seatToEngineIdx[s] === playerIdx);
+      if (seatIdx === undefined) return;
+      const seat = room.seats[seatIdx];
+      if (seat) io.to(seat.socketId).emit('game:invalidMove', { reason });
+    });
 
     room.engine.newGame(activePlayers.map(p => ({ id: p.id, name: p.name })));
     broadcastRoom(room);
