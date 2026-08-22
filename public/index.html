@@ -39,11 +39,11 @@ input{font-family:inherit;}
   min-height:58px;
 }
 .banner-logo{
-  position:absolute; left:6px; top:50%; transform:translateY(-50%);
-  width:clamp(190px,46vw,340px); height:auto; max-width:none;
+  position:absolute; left:10px; top:50%; transform:translateY(-50%);
+  height:clamp(90px,26vw,150px); width:auto; max-width:none;
   z-index:5; pointer-events:none;
 }
-@media (max-width:600px){ .banner-logo{ width:47vw; left:2px; } }
+@media (max-width:600px){ .banner-logo{ height:100px; left:6px; } }
 .banner .sub{font-family:var(--font-mono); font-size:11px; color:var(--ink); font-weight:700; background:var(--paper); padding:4px 8px; border:2px solid var(--ink);}
 
 #setup-screen{max-width:640px; margin:24px auto; padding:0 16px 60px;}
@@ -242,7 +242,7 @@ input{font-family:inherit;}
 <body>
 
 <div class="banner">
-  <img src="/logo-banner-2.png" alt="Last Card Live" class="banner-logo">
+  <img src="/matatu-badge.png" alt="Last Card Live" class="banner-logo">
   <div style="display:flex; align-items:center;">
     <span class="sub" id="connStatus">CONNECTING…</span>
     <button class="sound-toggle" id="soundToggle" title="Toggle sound">🔊</button>
