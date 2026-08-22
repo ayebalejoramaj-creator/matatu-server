@@ -36,14 +36,14 @@ input{font-family:inherit;}
   background: linear-gradient(90deg, var(--red) 0 33.33%, var(--yellow) 33.33% 66.66%, var(--blue) 66.66% 100%);
   border-bottom: var(--line) solid var(--ink);
   overflow:visible; position:relative; z-index:1;
-  min-height:74px;
+  min-height:62px;
 }
 .banner-logo{
   position:absolute; left:10px; top:50%; transform:translateY(-50%);
-  height:clamp(110px,32vw,180px); width:auto; max-width:none;
+  width:clamp(170px,44vw,300px); height:auto; max-width:none;
   z-index:5; pointer-events:none;
 }
-@media (max-width:600px){ .banner-logo{ height:132px; left:6px; } }
+@media (max-width:600px){ .banner-logo{ width:45vw; left:6px; } }
 .banner .sub{font-family:var(--font-mono); font-size:11px; color:var(--ink); font-weight:700; background:var(--paper); padding:4px 8px; border:2px solid var(--ink);}
 
 #setup-screen{max-width:640px; margin:24px auto; padding:0 16px 60px;}
